@@ -1,14 +1,17 @@
 ##############################################################
-# BG-NBD ve Gamma-Gamma ile CLTV Prediction
+# CLTV Prediction with BG-NBD ve Gamma-Gamma
 ##############################################################
 
-# 1. Verinin Hazırlanması (Data Preperation)
-# 2. BG-NBD Modeli ile Expected Sales Forecasting
-# 3. Gamma-Gamma Modeli ile Expected Average Profit
-# 4. BG-NBD ve Gamma-Gamma Modeli ile CLTV'nin Hesaplanması
-# 5. CLTV'ye Göre Segmentlerin Oluşturulması
-# 6. Çalışmanın fonksiyonlaştırılması
-# 7. Sonuçların Veri Tabanına Gönderilmesi
+# 1. (Data Preperation)
+# 2. Expected Sales Forecasting with BG-NBD Model
+# 3. Expected Average Profit with Gamma-Gamma Modeli
+# 4. Calculation of CLTV with BG-NBD and Gamma-Gamma Model
+# 5. Creating Segments by CLTV
+# 6. Functionalization of work
+# 7. Submitting Results to Database
+
+# CLTV = (Customer_Value / Churn_Rate) x Profit_margin.
+# Customer_Value = Average_Order_Value * Purchase_Frequency
 
 # CLTV = (Customer_Value / Churn_Rate) x Profit_margin.
 # Customer_Value = Average_Order_Value * Purchase_Frequency
@@ -18,7 +21,7 @@
 ##############################################################
 
 ##########################
-# Gerekli Kütüphane ve Fonksiyonlar
+# Neccesary libraries and functions
 ##########################
 
 
@@ -83,7 +86,7 @@ df.info()
 df.head()
 
 #########################
-# Veri Ön İşleme
+# data preprocessing
 #########################
 
 df.describe().T
@@ -102,12 +105,12 @@ df["TotalPrice"] = df["Quantity"] * df["Price"]
 today_date = dt.datetime(2011,12,11)
 df["InvoiceDate"].max()
 
-# Lifetime Veri Yapısının Hazırlanması
+# Prepration of LifeTime dataset
 
-# recency: Son satın alma üzerinden geçen zaman. Haftalık. (daha önce analiz gününe göre, burada kullanıcı özelinde)
-# T: Analiz tarihinden ne kadar süre önce ilk satın alma yapılmış. Haftalık.
-# frequency: tekrar eden toplam satın alma sayısı (frequency>1)
-# monetary_value: satın alma başına ortalama kazanç
+# recency: Time since last purchase. Weekly. (according to analysis day before, here is user specific)
+# T: How long before the analysis date was the first purchase made. Weekly.
+# frequency: total number of repeat purchases (frequency>1)
+# monetary_value: average earnings per purchase
 
 
 uk_cltv = df[df["Country"] == "United Kingdom"]
@@ -129,7 +132,7 @@ uk_cltv["recency"] = uk_cltv["recency"] / 7
 
 uk_cltv["T"] = uk_cltv["T"] / 7
 
-# 2. BG-NBD Modelinin Kurulması
+# 2. Establishment of BG-NBD Model
 
 bgf = BetaGeoFitter(penalizer_coef=0.001)
 
@@ -143,7 +146,7 @@ uk_cltv["expected_purc_1_month"] = bgf.predict(4,
                                                uk_cltv["frequency"],
                                                uk_cltv["recency"],
                                                uk_cltv["T"])
-# 3.GAMMA-GAMMA Modelinin Kurulması
+# 3. Establishment of GAMMA-GAMMA Model
 
 ggf = GammaGammaFitter(penalizer_coef=0.001)
 ggf.fit(uk_cltv["frequency"], uk_cltv["T"])
@@ -154,7 +157,7 @@ ggf.conditional_expected_average_profit(frequency=uk_cltv["frequency"],
 uk_cltv["expected_average_profit_clv"] = ggf.conditional_expected_average_profit(uk_cltv["frequency"],
                                                                                  uk_cltv["monetary"])
 
-# 4. BG-NBD ve GG modeli ile CLTV'nin hesaplanması.
+# 4. Calculation of CLTV with BG-NBD and GG model.
 
 cltv = ggf.customer_lifetime_value(bgf,
                                    uk_cltv["frequency"],
@@ -194,7 +197,7 @@ cltv_final.sort_values(by="scaled_clv", ascending=False).head(10)
 
 """
 
-# GÖREV 2
+# Mission 2
 
 cltv_one_month = ggf.customer_lifetime_value(bgf,
                                    uk_cltv["frequency"],
@@ -242,12 +245,12 @@ CustomerID
 12828.0000    2021.4631
 12829.0000      27.5499
 """
-# GOREV 3
+# Misson 3
 
 cltv_final["segments"] = pd.qcut(cltv_final["scaled_clv"], 4, labels=["D","C","B","A"])
 
 
-# GOREV 4
+# Mission 4
 cltv_final.head()
 
 cltv_final["CustomerID"] = cltv_final["CustomerID"].astype(int)
